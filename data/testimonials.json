@@ -1,0 +1,50 @@
+[
+  {
+    "id": "rev_1787768123527",
+    "client_name": "Mahesh",
+    "event_type": "Birthday Party",
+    "rating": 5,
+    "review": "Event made Very Beautiful",
+    "created_at": "2026-08-26T18:15:23.527Z"
+  },
+  {
+    "id": "1",
+    "client_name": "Priya & Rahul Sharma",
+    "event_type": "Wedding Ceremony",
+    "review": "Varsha was absolutely phenomenal! She kept our guests engaged and made our wedding day even more special. Her energy and grace were unmatched. We could not have asked for a better anchor!",
+    "rating": 5,
+    "created_at": "2026-01-10T10:00:00.000Z"
+  },
+  {
+    "id": "2",
+    "client_name": "Neha Gupta",
+    "event_type": "Birthday Party",
+    "review": "My daughter's 18th birthday was a dream come true, thanks to Varsha! She knew exactly how to balance fun and sentiment. Every guest was smiling and dancing. Truly the best!",
+    "rating": 5,
+    "created_at": "2026-01-15T10:00:00.000Z"
+  },
+  {
+    "id": "3",
+    "client_name": "TechCorp India Ltd.",
+    "event_type": "Corporate Award Night",
+    "review": "We hired Varsha for our annual awards ceremony and she delivered beyond expectations. Professional, charming, and perfectly in command of the audience. Highly recommended for corporate events.",
+    "rating": 5,
+    "created_at": "2026-01-20T10:00:00.000Z"
+  },
+  {
+    "id": "4",
+    "client_name": "Anjali Mehta",
+    "event_type": "Cultural Program",
+    "review": "Varsha's command over language and her ability to connect with a diverse audience is remarkable. She made our cultural evening a grand success. Will definitely book again!",
+    "rating": 5,
+    "created_at": "2026-01-25T10:00:00.000Z"
+  },
+  {
+    "id": "5",
+    "client_name": "St. Xavier's School",
+    "event_type": "Annual Day Function",
+    "review": "Energetic, witty, and perfectly paced — Varsha kept both students and parents thoroughly entertained. She was a joy to work with and made our Annual Day truly memorable.",
+    "rating": 5,
+    "created_at": "2026-02-01T10:00:00.000Z"
+  }
+]
