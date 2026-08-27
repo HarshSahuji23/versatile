@@ -4,23 +4,41 @@ import path from 'path'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { getAdminSession } from '@/lib/auth'
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'testimonials.json')
+import os from 'os'
 
-async function readLocalTestimonials() {
+const DATA_FILE = path.join(process.cwd(), 'data', 'testimonials.json')
+const TMP_DATA_FILE = path.join(os.tmpdir(), 'testimonials.json')
+
+let memoryTestimonials: any[] | null = null
+
+async function readLocalTestimonials(): Promise<any[]> {
+  if (memoryTestimonials && Array.isArray(memoryTestimonials)) return memoryTestimonials
   try {
     const content = await fs.readFile(DATA_FILE, 'utf-8')
-    return JSON.parse(content)
+    memoryTestimonials = JSON.parse(content)
+    return Array.isArray(memoryTestimonials) ? memoryTestimonials : []
   } catch {
-    return []
+    try {
+      const tmpContent = await fs.readFile(TMP_DATA_FILE, 'utf-8')
+      memoryTestimonials = JSON.parse(tmpContent)
+      return Array.isArray(memoryTestimonials) ? memoryTestimonials : []
+    } catch {
+      return []
+    }
   }
 }
 
 async function writeLocalTestimonials(data: any[]) {
+  memoryTestimonials = data
   try {
     await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
     await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8')
-  } catch (err) {
-    console.error('Error writing testimonials data:', err)
+  } catch {
+    try {
+      await fs.writeFile(TMP_DATA_FILE, JSON.stringify(data, null, 2), 'utf-8')
+    } catch {
+      // Supabase cloud persistence
+    }
   }
 }
 

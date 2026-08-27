@@ -4,24 +4,42 @@ import path from 'path'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { getAdminSession } from '@/lib/auth'
 
+import os from 'os'
+
 const DATA_FILE = path.join(process.cwd(), 'data', 'bookings.json')
+const TMP_DATA_FILE = path.join(os.tmpdir(), 'bookings.json')
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
-async function readLocalBookings() {
+let memoryBookings: any[] | null = null
+
+async function readLocalBookings(): Promise<any[]> {
+  if (memoryBookings && Array.isArray(memoryBookings)) return memoryBookings
   try {
     const content = await fs.readFile(DATA_FILE, 'utf-8')
-    return JSON.parse(content)
+    memoryBookings = JSON.parse(content)
+    return Array.isArray(memoryBookings) ? memoryBookings : []
   } catch {
-    return []
+    try {
+      const tmpContent = await fs.readFile(TMP_DATA_FILE, 'utf-8')
+      memoryBookings = JSON.parse(tmpContent)
+      return Array.isArray(memoryBookings) ? memoryBookings : []
+    } catch {
+      return []
+    }
   }
 }
 
 async function writeLocalBookings(data: any[]) {
+  memoryBookings = data
   try {
     await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
     await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8')
-  } catch (err) {
-    console.error('Error writing bookings data:', err)
+  } catch {
+    try {
+      await fs.writeFile(TMP_DATA_FILE, JSON.stringify(data, null, 2), 'utf-8')
+    } catch {
+      // Supabase is the primary cloud database
+    }
   }
 }
 

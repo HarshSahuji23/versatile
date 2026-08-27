@@ -4,23 +4,41 @@ import path from 'path'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { getAdminSession } from '@/lib/auth'
 
-const DATA_FILE = path.join(process.cwd(), 'data', 'services.json')
+import os from 'os'
 
-async function readLocalServices() {
+const DATA_FILE = path.join(process.cwd(), 'data', 'services.json')
+const TMP_DATA_FILE = path.join(os.tmpdir(), 'services.json')
+
+let memoryServices: any[] | null = null
+
+async function readLocalServices(): Promise<any[]> {
+  if (memoryServices && Array.isArray(memoryServices)) return memoryServices
   try {
     const content = await fs.readFile(DATA_FILE, 'utf-8')
-    return JSON.parse(content)
+    memoryServices = JSON.parse(content)
+    return Array.isArray(memoryServices) ? memoryServices : []
   } catch {
-    return []
+    try {
+      const tmpContent = await fs.readFile(TMP_DATA_FILE, 'utf-8')
+      memoryServices = JSON.parse(tmpContent)
+      return Array.isArray(memoryServices) ? memoryServices : []
+    } catch {
+      return []
+    }
   }
 }
 
 async function writeLocalServices(data: any[]) {
+  memoryServices = data
   try {
     await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
     await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8')
-  } catch (err) {
-    console.error('Error writing services data:', err)
+  } catch {
+    try {
+      await fs.writeFile(TMP_DATA_FILE, JSON.stringify(data, null, 2), 'utf-8')
+    } catch {
+      // Supabase cloud persistence
+    }
   }
 }
 

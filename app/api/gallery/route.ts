@@ -4,26 +4,44 @@ import path from 'path'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { getAdminSession } from '@/lib/auth'
 
+import os from 'os'
+
 const DATA_FILE = path.join(process.cwd(), 'data', 'gallery.json')
+const TMP_DATA_FILE = path.join(os.tmpdir(), 'gallery.json')
 const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads')
 const ALLOWED_EXTENSIONS = new Set(['.jpg', '.jpeg', '.png', '.webp', '.avif'])
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
-async function readLocalGallery() {
+let memoryGallery: any[] | null = null
+
+async function readLocalGallery(): Promise<any[]> {
+  if (memoryGallery && Array.isArray(memoryGallery)) return memoryGallery
   try {
     const content = await fs.readFile(DATA_FILE, 'utf-8')
-    return JSON.parse(content)
+    memoryGallery = JSON.parse(content)
+    return Array.isArray(memoryGallery) ? memoryGallery : []
   } catch {
-    return []
+    try {
+      const tmpContent = await fs.readFile(TMP_DATA_FILE, 'utf-8')
+      memoryGallery = JSON.parse(tmpContent)
+      return Array.isArray(memoryGallery) ? memoryGallery : []
+    } catch {
+      return []
+    }
   }
 }
 
 async function writeLocalGallery(data: any[]) {
+  memoryGallery = data
   try {
     await fs.mkdir(path.dirname(DATA_FILE), { recursive: true })
     await fs.writeFile(DATA_FILE, JSON.stringify(data, null, 2), 'utf-8')
-  } catch (err) {
-    console.error('Error writing gallery data:', err)
+  } catch {
+    try {
+      await fs.writeFile(TMP_DATA_FILE, JSON.stringify(data, null, 2), 'utf-8')
+    } catch {
+      // Supabase cloud persistence
+    }
   }
 }
 
