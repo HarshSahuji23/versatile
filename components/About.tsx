@@ -51,7 +51,7 @@ export default function About() {
             </h2>
             <p className="about-description">
               Hello! I&apos;m <strong>Varsha Jain</strong>, a passionate and versatile professional anchor
-              dedicated to making every event an extraordinary experience. With over 8 years of
+              dedicated to making every event an extraordinary experience. With over 2+ years of
               anchoring expertise, I blend warmth, wit, and professionalism to create moments
               that resonate long after the event is over.
             </p>
