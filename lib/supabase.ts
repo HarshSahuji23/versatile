@@ -19,6 +19,34 @@ const supabaseAnonKey =
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+// Server-side client using SUPABASE_SERVICE_ROLE_KEY when available
+let serverSupabaseClient: ReturnType<typeof createClient> | null = null
+
+export function getSupabaseServerClient() {
+  if (serverSupabaseClient) {
+    return serverSupabaseClient
+  }
+  const key =
+    (typeof process !== 'undefined' && process.env.SUPABASE_SERVICE_ROLE_KEY) ||
+    supabaseAnonKey
+
+  serverSupabaseClient = createClient(supabaseUrl, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+  })
+  return serverSupabaseClient
+}
+
+export type AdminSetting = {
+  id: string
+  email: string
+  password: string
+  recovery_code: string
+  updated_at: string
+}
+
 export type Service = {
   id: string
   title: string

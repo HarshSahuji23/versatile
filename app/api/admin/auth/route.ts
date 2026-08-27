@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server'
-import fs from 'fs/promises'
-import path from 'path'
-import os from 'os'
-import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured, getSupabaseServerClient } from '@/lib/supabase'
 import {
   hashPassword,
   verifyPassword,
@@ -12,60 +9,93 @@ import {
   getAdminSession
 } from '@/lib/auth'
 
-const LOCAL_ADMIN_FILE = path.join(process.cwd(), 'data', 'admin.json')
-const TMP_ADMIN_FILE = path.join(os.tmpdir(), 'admin.json')
-
 // In-memory runtime cache for serverless environments
 let memoryAdminState: any = null
+
+function getDefaultAdminData() {
+  const defaultPassword = process.env.ADMIN_PASSWORD || 'varsha@123'
+  return {
+    email: (process.env.ADMIN_EMAIL || 'varsha@gmail.com').toLowerCase(),
+    password: hashPassword(defaultPassword),
+    recovery_code: (process.env.ADMIN_RECOVERY_CODE || 'VARSHA2026').toUpperCase(),
+    updated_at: new Date().toISOString()
+  }
+}
 
 async function getAdminData() {
   if (memoryAdminState) {
     return memoryAdminState
   }
 
-  // 1. Try reading from project data file
-  try {
-    const content = await fs.readFile(LOCAL_ADMIN_FILE, 'utf-8')
-    memoryAdminState = JSON.parse(content)
-    return memoryAdminState
-  } catch {
-    // 2. Try reading from /tmp file (serverless writable store)
+  // 1. Try reading from Supabase database table
+  if (isSupabaseConfigured) {
     try {
-      const tmpContent = await fs.readFile(TMP_ADMIN_FILE, 'utf-8')
-      memoryAdminState = JSON.parse(tmpContent)
-      return memoryAdminState
-    } catch {
-      // 3. Fallback defaults (Production default: varsha@gmail.com / varsha@123)
-      const defaultData = {
-        email: process.env.ADMIN_EMAIL || 'varsha@gmail.com',
-        password: hashPassword(process.env.ADMIN_PASSWORD || 'varsha@123'),
-        recovery_code: process.env.ADMIN_RECOVERY_CODE || 'VARSHA2026',
-        updated_at: new Date().toISOString()
-      }
-      memoryAdminState = defaultData
+      const client = getSupabaseServerClient()
+      const { data, error } = await (client.from('admin_settings') as any)
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      // Attempt non-blocking write to /tmp or local file
-      try {
-        await fs.writeFile(TMP_ADMIN_FILE, JSON.stringify(defaultData, null, 2), 'utf-8')
-      } catch {
-        // Safe to ignore in read-only serverless contexts
+      if (!error && data && data.email) {
+        memoryAdminState = {
+          email: data.email,
+          password: data.password,
+          recovery_code: data.recovery_code || 'VARSHA2026',
+          updated_at: data.updated_at || new Date().toISOString()
+        }
+        return memoryAdminState
       }
 
-      return memoryAdminState
+      // If table exists but is empty, initialize it with default admin data
+      if (!error && !data) {
+        const defaults = getDefaultAdminData()
+        try {
+          await (client.from('admin_settings') as any).upsert({
+            id: 'admin_config',
+            email: defaults.email,
+            password: defaults.password,
+            recovery_code: defaults.recovery_code,
+            updated_at: defaults.updated_at
+          })
+        } catch {
+          // Ignore if upsert fails
+        }
+        memoryAdminState = defaults
+        return memoryAdminState
+      }
+    } catch (err) {
+      console.warn('Supabase fetch admin settings warning:', err)
     }
   }
+
+  // 2. Fallback defaults (Production default: varsha@gmail.com / varsha@123)
+  memoryAdminState = getDefaultAdminData()
+  return memoryAdminState
 }
 
 async function saveAdminData(data: any) {
-  memoryAdminState = data
-  try {
-    await fs.mkdir(path.dirname(LOCAL_ADMIN_FILE), { recursive: true })
-    await fs.writeFile(LOCAL_ADMIN_FILE, JSON.stringify(data, null, 2), 'utf-8')
-  } catch {
+  memoryAdminState = {
+    ...data,
+    updated_at: data.updated_at || new Date().toISOString()
+  }
+
+  if (isSupabaseConfigured) {
     try {
-      await fs.writeFile(TMP_ADMIN_FILE, JSON.stringify(data, null, 2), 'utf-8')
-    } catch {
-      // Memory state persists during runtime instance lifecycle
+      const client = getSupabaseServerClient()
+      const { error } = await (client.from('admin_settings') as any)
+        .upsert({
+          id: 'admin_config',
+          email: memoryAdminState.email,
+          password: memoryAdminState.password,
+          recovery_code: memoryAdminState.recovery_code,
+          updated_at: memoryAdminState.updated_at
+        })
+      if (error) {
+        console.warn('Supabase saveAdminData error:', error.message)
+      }
+    } catch (err) {
+      console.warn('Supabase saveAdminData exception:', err)
     }
   }
 }
